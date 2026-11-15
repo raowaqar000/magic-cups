@@ -50,6 +50,8 @@ export class GameScene extends Phaser.Scene {
   private roundToken = 0;
   /** Dev: show which cup holds the ball. */
   debugShowBall = false;
+  /** Dev: shuffle playback speed multiplier ([ slower, ] faster). Always 1 in production. */
+  debugSpeed = 1;
 
   constructor() {
     super('Game');
@@ -168,7 +170,7 @@ export class GameScene extends Phaser.Scene {
 
     this.phase = 'shuffle';
     this.events.emit(GAME_EVENTS.shuffleStart, script);
-    await new ShufflePlayer(this, this.slots, this.cups, script).play(script, alive);
+    await new ShufflePlayer(this, this.slots, this.cups, script, () => this.debugSpeed).play(script, alive);
     if (!alive()) return;
     this.events.emit(GAME_EVENTS.shuffleEnd, script);
 
@@ -398,10 +400,11 @@ export class GameScene extends Phaser.Scene {
     this.cups.forEach((c) => c.setMarkerVisible(this.debugShowBall));
   }
 
-  debugInfo(): { level: LevelConfig; seed: string; phase: RoundPhase; hearts: number; attempt: number } {
+  debugInfo(): { level: LevelConfig; seed: string; phase: RoundPhase; hearts: number; attempt: number; speed: number } {
     return {
       level: this.level,
       seed: this.seed,
+      speed: this.debugSpeed,
       phase: this.phase,
       hearts: this.session.hearts,
       attempt: this.session.attempt,

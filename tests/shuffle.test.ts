@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LAYOUTS, slotCell, slotCount, type LayoutId } from '../src/engine/layouts';
-import { candidatePairs, finalItemSlot, generateShuffle, pairsCompatible } from '../src/engine/shuffle';
+import { candidatePairs, finalItemSlot, generateShuffle, pairsCompatible, rampDuration } from '../src/engine/shuffle';
 import { Rng } from '../src/engine/rng';
-import type { ShuffleConfig, ShuffleScript, SwapRule } from '../src/engine/types';
+import type { RampCurve, ShuffleConfig, ShuffleScript, SwapRule } from '../src/engine/types';
 
 const LAYOUT_IDS = Object.keys(LAYOUTS) as LayoutId[];
 
@@ -133,10 +133,61 @@ describe('shuffle engine: step rules', () => {
     expect(script.steps[script.steps.length - 1].kind).toBe('swapGroup');
   });
 
-  it('ramps durations from start to end speed', () => {
-    const script = generateShuffle(config('row3', { moves: 5, speed: { startMs: 900, endMs: 500 } }), 's');
-    const durations = script.steps.filter((s) => s.kind === 'swapGroup').map((s) => s.durationMs);
-    expect(durations).toEqual([900, 800, 700, 600, 500]);
+  const groupDurations = (cfg: ShuffleConfig) =>
+    generateShuffle(cfg, 'ramp').steps.filter((s) => s.kind === 'swapGroup').map((s) => s.durationMs);
+
+  it('linear ramp: even steps from start to end speed', () => {
+    const cfg = config('row3', { moves: 5, speed: { startMs: 900, endMs: 500 }, rampCurve: 'linear' });
+    expect(groupDurations(cfg)).toEqual([900, 800, 700, 600, 500]);
+  });
+
+  it('defaults to easeIn: t^2 over the move index', () => {
+    const cfg = config('row3', { moves: 5, speed: { startMs: 900, endMs: 500 } });
+    // t = 0, .25, .5, .75, 1 -> t^2 = 0, .0625, .25, .5625, 1
+    expect(groupDurations(cfg)).toEqual([900, 875, 800, 675, 500]);
+    expect(rampDuration({ startMs: 900, endMs: 500 }, 2, 5)).toBe(800);
+  });
+
+  it('every curve starts at startMs, ends at endMs, and stays within them', () => {
+    const meta = new Rng('ramp-bounds');
+    for (const curve of ['linear', 'easeIn', 'easeInStrong'] as RampCurve[]) {
+      for (let i = 0; i < 200; i++) {
+        const startMs = meta.int(300, 1000);
+        const endMs = meta.int(150, 1000);
+        const moves = meta.int(2, 20);
+        const d = groupDurations(config('row4', { moves, speed: { startMs, endMs }, rampCurve: curve }));
+        expect(d[0]).toBe(startMs);
+        expect(d[d.length - 1]).toBe(endMs);
+        for (const x of d) {
+          expect(x).toBeGreaterThanOrEqual(Math.min(startMs, endMs));
+          expect(x).toBeLessThanOrEqual(Math.max(startMs, endMs));
+        }
+        // Speeding up (start > end) never gets slower again, and vice versa.
+        for (let k = 1; k < d.length; k++) {
+          if (startMs >= endMs) expect(d[k]).toBeLessThanOrEqual(d[k - 1]);
+          else expect(d[k]).toBeGreaterThanOrEqual(d[k - 1]);
+        }
+      }
+    }
+  });
+
+  it('easeIn: first half of the round is slower on average than the second half', () => {
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    for (const moves of [4, 5, 8, 11, 12]) {
+      for (const curve of ['easeIn', 'easeInStrong'] as RampCurve[]) {
+        const d = groupDurations(config('row5', { moves, speed: { startMs: 700, endMs: 400 }, rampCurve: curve }));
+        const half = Math.floor(d.length / 2);
+        expect(avg(d.slice(0, half))).toBeGreaterThan(avg(d.slice(d.length - half)));
+      }
+    }
+  });
+
+  it('stronger curves keep the start slower for longer', () => {
+    const speed = { startMs: 800, endMs: 400 };
+    const sum = (rampCurve: RampCurve) =>
+      groupDurations(config('row3', { moves: 9, speed, rampCurve })).reduce((a, b) => a + b, 0);
+    expect(sum('easeInStrong')).toBeGreaterThan(sum('easeIn'));
+    expect(sum('easeIn')).toBeGreaterThan(sum('linear'));
   });
 
   it('totalDurationMs is the sum of all steps', () => {
@@ -222,5 +273,6 @@ describe('shuffle engine: step rules', () => {
     expect(() => generateShuffle(config('row3', { simultaneousPairs: 2 }), 'x')).toThrow();
     expect(() => generateShuffle(config('row3', { moves: 0 }), 'x')).toThrow();
     expect(() => generateShuffle(config('row3', { items: [] }), 'x')).toThrow();
+    expect(() => generateShuffle(config('row3', { rampCurve: 'bouncy' as RampCurve }), 'x')).toThrow();
   });
 });

@@ -38,6 +38,54 @@ describe('levels', () => {
     expect(scores[19]).toBeGreaterThan(scores[0] * 10);
   });
 
+  it('matches the balanced difficulty table', () => {
+    // [layout, moves, startMs, endMs, pairs, pause, swapRule]
+    const table: [string, number, number, number, number, number, string][] = [
+      ['row3', 5, 800, 500, 1, 80, 'adjacent'],
+      ['row3', 6, 750, 460, 1, 70, 'adjacent'],
+      ['row3', 7, 700, 420, 1, 60, 'line'],
+      ['row3', 8, 680, 400, 1, 60, 'line'],
+      ['row4', 7, 720, 450, 1, 70, 'adjacent'],
+      ['row4', 8, 680, 420, 1, 60, 'line'],
+      ['row4', 9, 650, 390, 1, 50, 'line'],
+      ['row5', 8, 700, 430, 1, 60, 'adjacent'],
+      ['row5', 9, 660, 400, 1, 50, 'line'],
+      ['row5', 10, 620, 370, 1, 50, 'line'],
+      ['grid2x3', 9, 680, 420, 1, 60, 'adjacent'],
+      ['grid2x3', 10, 640, 390, 1, 50, 'adjacent'],
+      ['grid2x3', 11, 600, 360, 1, 50, 'adjacent'],
+      ['grid3x3', 9, 680, 420, 1, 60, 'adjacent'],
+      ['grid3x3', 10, 640, 390, 1, 50, 'adjacent'],
+      ['grid3x3', 11, 600, 360, 1, 50, 'adjacent'],
+      ['row4', 10, 620, 380, 2, 220, 'line'],
+      ['row5', 11, 600, 360, 2, 200, 'line'],
+      ['grid2x3', 11, 580, 350, 2, 200, 'adjacent'],
+      ['grid3x3', 12, 560, 340, 3, 200, 'adjacent'],
+    ];
+    LEVELS.forEach((l, i) => {
+      const [layout, moves, startMs, endMs, pairs, pause, rule] = table[i];
+      expect([l.layout, l.moves, l.speed.startMs, l.speed.endMs, l.simultaneousPairs, l.pauseBetweenGroupsMs, l.swapRule]).toEqual([
+        layout, moves, startMs, endMs, pairs, pause, rule,
+      ]);
+      expect(l.rampCurve).toBe('easeIn');
+      expect(l.targetBias).toBe(0.5);
+    });
+  });
+
+  it('every level speeds up during the round and stays within its start/end speed', () => {
+    for (const level of LEVELS) {
+      const d = generateShuffle(level, level.seed)
+        .steps.filter((s) => s.kind === 'swapGroup')
+        .map((s) => s.durationMs);
+      expect(d[0]).toBe(level.speed.startMs);
+      expect(d[d.length - 1]).toBe(level.speed.endMs);
+      for (const x of d) {
+        expect(x).toBeLessThanOrEqual(level.speed.startMs);
+        expect(x).toBeGreaterThanOrEqual(level.speed.endMs);
+      }
+    }
+  });
+
   it('uses several cup types and introduces simultaneous swaps late', () => {
     expect(new Set(LEVELS.map((l) => l.cup)).size).toBeGreaterThanOrEqual(5);
     const firstMulti = LEVELS.findIndex((l) => l.simultaneousPairs > 1);

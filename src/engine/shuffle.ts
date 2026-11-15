@@ -1,6 +1,25 @@
 import { LAYOUTS, slotCell, slotCount, type LayoutId } from './layouts';
 import { Rng } from './rng';
-import type { RoundSnapshot, ShuffleConfig, ShuffleScript, ShuffleStep, SwapPair, SwapRule } from './types';
+import type { RampCurve, RoundSnapshot, ShuffleConfig, ShuffleScript, ShuffleStep, SwapPair, SwapRule } from './types';
+
+export const DEFAULT_RAMP_CURVE: RampCurve = 'easeIn';
+
+const RAMP: Record<RampCurve, (t: number) => number> = {
+  linear: (t) => t,
+  easeIn: (t) => t * t,
+  easeInStrong: (t) => t * t * t,
+};
+
+/** Duration of swap group `index` (0-based) out of `moves`, following the ramp curve. */
+export function rampDuration(
+  speed: { startMs: number; endMs: number },
+  index: number,
+  moves: number,
+  curve: RampCurve = DEFAULT_RAMP_CURVE,
+): number {
+  const t = moves > 1 ? index / (moves - 1) : 0;
+  return Math.round(speed.startMs + (speed.endMs - speed.startMs) * RAMP[curve](t));
+}
 
 type Pair = readonly [number, number];
 
@@ -115,6 +134,9 @@ export function validateShuffleConfig(cfg: ShuffleConfig): void {
   if (cfg.simultaneousPairs > Math.floor(n / 2)) fail('simultaneousPairs too large for cup count');
   if (cfg.pauseBetweenGroupsMs < 0) fail('pauseBetweenGroupsMs must be >= 0');
   if (cfg.targetBias < 0 || cfg.targetBias > 1) fail('targetBias must be 0..1');
+  if (cfg.rampCurve !== undefined && !['linear', 'easeIn', 'easeInStrong'].includes(cfg.rampCurve)) {
+    fail(`unknown rampCurve '${cfg.rampCurve}'`);
+  }
   const fc = cfg.fakeoutChance ?? 0;
   if (fc < 0 || fc > 1) fail('fakeoutChance must be 0..1');
   candidatePairs(cfg.layout, cfg.swapRule); // throws for invalid rule/layout combos
@@ -140,8 +162,7 @@ export function generateShuffle(cfg: ShuffleConfig, seed: string): ShuffleScript
   const fakeoutChance = cfg.fakeoutChance ?? 0;
 
   for (let g = 0; g < cfg.moves; g++) {
-    const t = cfg.moves > 1 ? g / (cfg.moves - 1) : 0;
-    const durationMs = Math.round(cfg.speed.startMs + (cfg.speed.endMs - cfg.speed.startMs) * t);
+    const durationMs = rampDuration(cfg.speed, g, cfg.moves, cfg.rampCurve);
 
     // Never immediately undo a single swap.
     const notUndo = (p: Pair) => !(prevGroup.length === 1 && samePair(prevGroup[0], p));

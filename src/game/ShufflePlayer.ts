@@ -28,6 +28,8 @@ export class ShufflePlayer {
     private readonly slots: SlotGeom[],
     private readonly cupsById: CupView[],
     script: ShuffleScript,
+    /** Playback speed multiplier (dev tool; 1 = as authored, 2 = twice as fast). */
+    private readonly speed: () => number = () => 1,
   ) {
     this.cupAtSlot = script.initial.cupAtSlot.slice();
   }
@@ -40,17 +42,16 @@ export class ShufflePlayer {
   }
 
   private async playStep(step: ShuffleStep): Promise<void> {
+    const ms = step.durationMs / Math.max(0.05, this.speed());
     if (step.kind === 'pause') {
-      await delay(this.scene, step.durationMs);
+      await delay(this.scene, ms);
       return;
     }
     if (step.kind === 'fakeout') {
-      await Promise.all(this.movesFor(step.pair).map((m) => this.animate(m, step.durationMs, true)));
+      await Promise.all(this.movesFor(step.pair).map((m) => this.animate(m, ms, true)));
       return;
     }
-    await Promise.all(
-      step.pairs.flatMap((pair) => this.movesFor(pair)).map((m) => this.animate(m, step.durationMs, false)),
-    );
+    await Promise.all(step.pairs.flatMap((pair) => this.movesFor(pair)).map((m) => this.animate(m, ms, false)));
     applyStep(this.cupAtSlot, step);
   }
 

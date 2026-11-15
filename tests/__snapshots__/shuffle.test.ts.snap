@@ -39,7 +39,7 @@ exports[`shuffle engine: determinism > matches a stored snapshot (guards against
       "kind": "pause",
     },
     {
-      "durationMs": 500,
+      "durationMs": 567,
       "kind": "swapGroup",
       "pairs": [
         {
@@ -54,7 +54,7 @@ exports[`shuffle engine: determinism > matches a stored snapshot (guards against
       "kind": "pause",
     },
     {
-      "durationMs": 400,
+      "durationMs": 467,
       "kind": "swapGroup",
       "pairs": [
         {

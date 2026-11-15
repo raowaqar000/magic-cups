@@ -10,6 +10,14 @@ export type SwapRule = 'adjacent' | 'line' | 'any';
 
 export type ItemRole = 'target' | 'decoy';
 
+/**
+ * How swap duration moves from speed.startMs to speed.endMs across the round:
+ * - 'linear':       even steps
+ * - 'easeIn':       t^2, early swaps stay slow, speed-up comes at the end (default)
+ * - 'easeInStrong': t^3, even longer slow start, sharper finish
+ */
+export type RampCurve = 'linear' | 'easeIn' | 'easeInStrong';
+
 export interface ItemSpec {
   /** Asset key of the item image (e.g. 'fx_ball_gold'). */
   asset: string;
@@ -22,8 +30,10 @@ export interface ShuffleConfig {
   items: ItemSpec[];
   /** Number of swap groups (a group = 1..simultaneousPairs swaps played at the same time). */
   moves: number;
-  /** Duration of one swap group; eased linearly from start to end across the round. */
+  /** Duration of one swap group, from start to end of the round (lower = faster). */
   speed: { startMs: number; endMs: number };
+  /** Shape of the speed ramp over the move index. Default 'easeIn'. */
+  rampCurve?: RampCurve;
   /** Max pairs swapping at the same time. 1 = classic one-at-a-time. */
   simultaneousPairs: number;
   /** Pause inserted between groups (0 = none). */
