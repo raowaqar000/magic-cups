@@ -1,0 +1,84 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`shuffle engine: determinism > matches a stored snapshot (guards against accidental engine changes) 1`] = `
+{
+  "final": {
+    "cupAtSlot": [
+      0,
+      1,
+      2,
+    ],
+    "itemCup": [
+      1,
+    ],
+  },
+  "initial": {
+    "cupAtSlot": [
+      0,
+      1,
+      2,
+    ],
+    "itemCup": [
+      1,
+    ],
+  },
+  "steps": [
+    {
+      "durationMs": 600,
+      "kind": "swapGroup",
+      "pairs": [
+        {
+          "front": "A",
+          "slotA": 0,
+          "slotB": 2,
+        },
+      ],
+    },
+    {
+      "durationMs": 100,
+      "kind": "pause",
+    },
+    {
+      "durationMs": 500,
+      "kind": "swapGroup",
+      "pairs": [
+        {
+          "front": "A",
+          "slotA": 0,
+          "slotB": 1,
+        },
+      ],
+    },
+    {
+      "durationMs": 100,
+      "kind": "pause",
+    },
+    {
+      "durationMs": 400,
+      "kind": "swapGroup",
+      "pairs": [
+        {
+          "front": "B",
+          "slotA": 0,
+          "slotB": 2,
+        },
+      ],
+    },
+    {
+      "durationMs": 100,
+      "kind": "pause",
+    },
+    {
+      "durationMs": 300,
+      "kind": "swapGroup",
+      "pairs": [
+        {
+          "front": "B",
+          "slotA": 1,
+          "slotB": 2,
+        },
+      ],
+    },
+  ],
+}
+`;
